@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Mar 18 14:28:47 2019
-
 @author: smrak
 """
 import os
@@ -10,37 +9,38 @@ import numpy as np
 import madrigalWeb.madrigalWeb
 import subprocess
 from dateutil import parser
+import platform
 
-def dlGPSTEC(t0:str = None, t1:str = None, savedir:str = None,
-             user_fullname:str = None,
-             user_email:str = None,
-             user_affiliation:str = None,
-             fixpath:bool = False):
-    
+
+def dlGPSTEC(t0: str = None, t1: str = None, savedir: str = None,
+             user_fullname: str = None,
+             user_email: str = None,
+             user_affiliation: str = None,
+             fixpath: bool = False):
     assert t0 is not None
     assert t1 is not None
     assert savedir is not None
-    
-    if user_fullname is None: 
-        user_fullname = 'Sebastijan Mrak'
-    if user_email is None: 
-        user_email = 'smrak@bu.edu'
-    if user_affiliation is None: 
-        user_affiliation = 'BU'
-        
+
+    if user_fullname is None:
+        user_fullname = 'Mrinal Ghosh'
+    if user_email is None:
+        user_email = 'ghoshm@bu.edu'
+    if user_affiliation is None:
+        user_affiliation = 'None'
+
     # Open Madrigal database
     madrigalUrl = 'http://cedar.openmadrigal.org/'
     MD = madrigalWeb.madrigalWeb.MadrigalData(madrigalUrl)
     # ======================== List of instruments ========================== #
-    # GPS network ID: 8000
-    # IMF and Sw IID: 120
-    # Geophysical Indisies ID: 210
+    # GPS Network ID: 8000
+    # IMF and SW IID: 120
+    # Geophysical Indices ID: 210
     # AE ID: 211
     # DST ID: 212
-    
-    #instList = MD.getAllInstruments()
-    
-    #for inst in instList:
+
+    # instList = MD.getAllInstruments()
+
+    # for inst in instList:
     #    if inst.code == 8000:
     #        print((str(inst) + '\n'))
     # ======================= Get/List of Experiments ======================= #
@@ -49,16 +49,16 @@ def dlGPSTEC(t0:str = None, t1:str = None, savedir:str = None,
     # DST ID: 30006
     # Geophysical Ind ID: 30007
     # AE ID: 30008
-    
+
     T0 = parser.parse(t0)
     T1 = parser.parse(t1)
-    expList = MD.getExperiments(8000, 
+    expList = MD.getExperiments(8000,
                                 T0.year, T0.month, T0.day, 0, 0, 1,
                                 T1.year, T1.month, T1.day, 23, 59, 59)
-    #for exp in expList:
+    # for exp in expList:
     #    # should be only one
     #    print((str(exp) + '\n'))
-    
+
     # ==================== Get links-filenames and output paths ============  #
     ids = [n.id for n in expList]
     file_list = np.array([MD.getExperimentFiles(n) for n in ids])
@@ -71,32 +71,43 @@ def dlGPSTEC(t0:str = None, t1:str = None, savedir:str = None,
                 parts = path.split(os.sep)
                 path_fn = os.path.split(path)[1]
                 if path_fn[:3] == 'gps':
-                    if not fixpath:
-                        p = savedir + '/'.join(parts[4:])
-                        savefn = os.path.join(p)
-                        savefnlist.append(savefn)
-                    else:
-                        savefn = savedir + os.path.split(path)[1]
-                        savefnlist.append(savefn)
+                    if platform.system() == 'Linux':
+                        if not fixpath:
+                            p = savedir + '/'.join(parts[4:])
+                            savefn = os.path.join(p)
+                            savefnlist.append(savefn)
+                        else:
+                            savefn = savedir + os.path.split(path)[1]
+                            savefnlist.append(savefn)
+                    elif platform.system() == 'Windows':
+                        if not fixpath:
+                            p = savedir + '\\'.join(parts[4:])
+                            savefn = os.path.join(p)
+                            savefnlist.append(savefn)
+                        else:
+                            savefn = savedir + os.path.split(path)[1]
+                            savefnlist.append(savefn)
                     fnlist.append(this_file.name)
-    
-    # Check for direcotories:
+
+    # Check for directories:
     for ofn in savefnlist:
         head = os.path.split(ofn)[0]
         if not os.path.exists(head):
             subprocess.call("mkdir -p {}".format(head), timeout=10, shell=True)
-    
+
     for i in range(len(savefnlist)):
         if not os.path.exists(savefnlist[i]):
-            print ('Downloading {}'.format(os.path.split(savefnlist[i])[1]))
-            MD.downloadFile(fnlist[i], savefnlist[i], 
-                            user_fullname, user_email, user_affiliation, 
+            print('Downloading {}'.format(os.path.split(savefnlist[i])[1]))
+            MD.downloadFile(fnlist[i], savefnlist[i],
+                            user_fullname, user_email, user_affiliation,
                             format='hdf5')
         else:
-            print ("{} already exists".format(savefnlist[i]))
+            print("{} already exists".format(savefnlist[i]))
+
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
+
     p = ArgumentParser()
     p.add_argument('t0', type=str, help='Time limit 1 YYYY-mm-dd')
     p.add_argument('t1', type=str, help='Time limit 2 YYYY-mm-dd')
@@ -105,12 +116,11 @@ if __name__ == '__main__':
     p.add_argument('--name', type=str, help='"Full name"')
     p.add_argument('--email', type=str, help='"email"')
     p.add_argument('--affiliation', type=str, help='"affiliation"')
-    
+
     P = p.parse_args()
-    
-    dlGPSTEC(t0 = P.t0, t1 = P.t1, savedir = P.odir, 
-             user_fullname = P.name,
-             user_email = P.email,
-             user_affiliation = P.affiliation,
-             fixpath = P.fixpath)
-    
+
+    dlGPSTEC(t0=P.t0, t1=P.t1, savedir=P.odir,
+             user_fullname=P.name,
+             user_email=P.email,
+             user_affiliation=P.affiliation,
+             fixpath=P.fixpath)

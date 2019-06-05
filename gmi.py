@@ -12,9 +12,11 @@ import subprocess
 #from dateutil import parser
 from datetime import datetime
 
+
 #fixpath = 1
 #savedir = 'C:\\Users\\smrak\\google drive\\bu\\projects\\LWS2019\\'
-IX = {'dst': 212, 'aei': 211, 'geo': 210}
+IX = {'dst': 212, 'aei': 211, 'geo': 210, 'imf': 120, 'gps': 8000}
+
 
 def dlIndex(#t0:str = None, #t1:str = None, 
             savedir:str = None,
@@ -29,11 +31,11 @@ def dlIndex(#t0:str = None, #t1:str = None,
     assert savedir is not None
     
     if user_fullname is None: 
-        user_fullname = 'Sebastijan Mrak'
+        user_fullname = 'Mrinal Ghosh'
     if user_email is None: 
-        user_email = 'smrak@bu.edu'
+        user_email = 'ghoshm@bu.edu'
     if user_affiliation is None: 
-        user_affiliation = 'BU'
+        user_affiliation = 'None'
     
     # Open Madrigal database
     madrigalUrl = 'http://cedar.openmadrigal.org/'
@@ -62,7 +64,7 @@ def dlIndex(#t0:str = None, #t1:str = None,
     T = datetime.now()
 #    T0 = parser.parse(t0)
 #    T1 = parser.parse(t1)
-    expList = MD.getExperiments(IX[index], 
+    expList = MD.getExperiments(IX[index],
                                 1900, 1, 1, 0, 0, 1,
                                 T.year, T.month, T.day, 0, 0, 0)
                                 #T1.year, T1.month, T1.day, 23, 59, 59)
@@ -108,6 +110,7 @@ def dlIndex(#t0:str = None, #t1:str = None,
         else:
             print ("{} already exists".format(savefnlist[i]))
 
+
 if __name__ == '__main__':
     from argparse import ArgumentParser
     p = ArgumentParser()
@@ -122,7 +125,7 @@ if __name__ == '__main__':
     
     P = p.parse_args()
     
-    dlIndex(#t0 = P.t0, #t1 = P.t1, 
+    dlIndex(#t0 = P.t0, #t1 = P.t1,
             savedir = P.odir, 
             index=P.index,
              user_fullname = P.name,
