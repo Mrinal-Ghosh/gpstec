@@ -25,115 +25,17 @@ def convert(root: str = None,
             ofn: str = None,
             force: bool = False):
 
-    if platform in ['win32']:
-        if os.path.splitext(root)[1] in ['.h5', '.hdf5']:  # FILE
-            fn = root
-            folder = os.path.split(fn)[0]
+    if os.path.splitext(root)[1] in ['.h5', '.hdf5']:  # FILE
+        fn = root
+        folder = os.path.split(fn)[0]
 
-            if date is not None:
-                datedt = parser.parse(date)
-                dateday = datedt.strftime('%j')
-            else:
-                datedt = datetime.strptime(os.path.split(root)[1][3:9], '%y%m%d')
-                dateday = datedt.strftime('%j')
-
-            if tlim is None:
-                if (int(dateday) + 1) > 365:
-                    year1 = int(datedt.year) + 1
-                    day1 = 1
-                else:
-                    year1 = int(datedt.year)
-                    day1 = int(dateday) + 1
-                tlim = [datetime.strptime("{} {}".format(str(datedt.year), str(dateday)), "%Y %j"),
-                        datetime.strptime("{} {}".format(str(year1), str(day1)), "%Y %j")]
-            else:
-                tlim = parser.parse(tlim)
-
-            if ofn is None:
-                ofn = folder
-            if os.path.isdir(ofn):
-                ofn = os.path.join(ofn,
-                                   'conv_' + tlim[0].strftime('%m%dT%H%M') + '-' + tlim[1].strftime('%m%dT%H%M') + '.h5')
-
-            if os.path.isfile(ofn):
-                if not os.path.splitext(ofn)[1] in ['.h5', '.hdf5']:
-                    ofn = os.path.splitext(ofn)[0] + '.h5'
-
-            if not os.path.exists(folder):
-                subprocess.call('mkdir -p {}'.format(folder + '/'), shell=True, timeout=5)
-
-            if os.path.exists(ofn) and not force:
-                print('File already exists')
-            else:
-                print('Loading and rearranging data ...')
-                D = gpstec.returnGlobalTEC(datafolder=fn, timelim=tlim)
-                print('Saving data to ... {}'.format(ofn))
-                gpstec.save2HDF(D['time'], D['xgrid'], D['ygrid'], D['tecim'], ofn)
-
-        else:  # FOLDER
-            flist = sorted(glob(os.path.split(root)[0] + '\\gps*.hdf5'))
-            if len(flist) > 0:
-                for file in flist:
-                    fn = file
-                    folder = os.path.split(fn)[0]
-
-                    datedt = datetime.strptime(os.path.split(fn)[1][3:9], '%y%m%d')
-                    dateday = datedt.strftime('%j')
-
-                    if tlim is None:
-                        if (int(dateday) + 1) > 365:
-                            year1 = int(datedt.year) + 1
-                            day1 = 1
-                        else:
-                            year1 = int(datedt.year)
-                            day1 = int(dateday) + 1
-                        tlim = [datetime.strptime("{} {}".format(str(datedt.year), str(dateday)), "%Y %j"),
-                                datetime.strptime("{} {}".format(str(year1), str(day1)), "%Y %j")]
-                    else:
-                        tlim = parser.parse(tlim)
-
-                    if ofn is None:
-                        ofn = folder
-                    if os.path.isdir(ofn):
-                        ofn = os.path.join(ofn,
-                                           'conv_' + tlim[0].strftime('%m%dT%H%M') + '-' + tlim[1].strftime(
-                                               '%m%dT%H%M') + '.h5')
-
-                    if os.path.isfile(ofn):
-                        if not os.path.splitext(ofn)[1] in ['.h5', '.hdf5']:
-                            ofn = os.path.splitext(ofn)[0] + '.h5'
-
-                    if not os.path.exists(folder):
-                        subprocess.call('mkdir -p {}'.format(folder + '/'), shell=True, timeout=5)
-
-                    if os.path.exists(ofn) and not force:
-                        print('File already exists')
-                    else:
-                        print('Loading and rearranging data ...')
-                        D = gpstec.returnGlobalTEC(datafolder=fn, timelim=tlim)
-                        print('Saving data to ... {}'.format(ofn))
-                        gpstec.save2HDF(D['time'], D['xgrid'], D['ygrid'], D['tecim'], ofn)
-
-                    tlim = None
-                    ofn = None
-
-    elif platform in ['linux', 'linux2']:
         if date is not None:
             datedt = parser.parse(date)
             dateday = datedt.strftime('%j')
         else:
-            try:
-                path = os.path.expanduser(root)
-                parts = path.split(os.sep)
-                assert len(parts[-2]) == 7
-                part = parts[-2]
-                month = str(months[part[2:5]])
-                dlist = [part[:2], str(month), part[-2:]]
-                datedt = datetime.strptime('-'.join(dlist), '%d-%m-%y')
-                dateday = datedt.strftime('%j')
-            #            print (datedt.strftime('%j'))
-            except Exception as e:
-                raise (e)
+            datedt = datetime.strptime(os.path.split(root)[1][3:9], '%y%m%d')
+            dateday = datedt.strftime('%j')
+
         if tlim is None:
             if (int(dateday) + 1) > 365:
                 year1 = int(datedt.year) + 1
@@ -145,27 +47,6 @@ def convert(root: str = None,
                     datetime.strptime("{} {}".format(str(year1), str(day1)), "%Y %j")]
         else:
             tlim = parser.parse(tlim)
-        if os.path.splitext(root[1]) in ['.h5', '.hdf5']:
-            fn = root
-            folder = os.path.split(fn)[0]
-        else:
-            flist = sorted(glob(root + '*.hdf5'))
-            if len(flist) > 0:
-                fn = flist[0]
-                folder = os.path.split(root)[0]
-            else:
-                try:
-                    d = str(datedt.day) if len(str(datedt.day)) == 2 else '0' + str(datedt.day)
-                    m = str(datedt.month) if len(str(datedt.month)) == 2 else '0' + str(datedt.month)
-                    ddir = d + tlim[0].strftime("%B")[:3].lower() + str(datedt.year)[2:]
-                    folder = os.path.join(root, ddir)
-                    print(folder)
-                    pattern = 'gps*{}{}{}g.*.hdf5'.format(str(datedt.year)[2:], m, d)
-                    print(sorted(glob(os.path.join(folder, pattern))))
-                    fn = sorted(glob(os.path.join(folder, pattern)))[0]
-
-                except Exception as e:
-                    raise (e)
 
         if ofn is None:
             ofn = folder
@@ -181,12 +62,67 @@ def convert(root: str = None,
             subprocess.call('mkdir -p {}'.format(folder + '/'), shell=True, timeout=5)
 
         if os.path.exists(ofn) and not force:
-            print('File already exist')
+            print('File already exists')
         else:
             print('Loading and rearranging data ...')
             D = gpstec.returnGlobalTEC(datafolder=fn, timelim=tlim)
             print('Saving data to ... {}'.format(ofn))
             gpstec.save2HDF(D['time'], D['xgrid'], D['ygrid'], D['tecim'], ofn)
+
+    else:  # FOLDER
+
+        if platform is 'win32':
+            flist = sorted(glob(os.path.split(root)[0] + '\\gps*.hdf5'))
+        elif platform in ['linux', 'linux2']:
+            flist = []
+            pattern = 'gps*.hdf5'
+            for fl, _, _ in os.walk(root):
+                flist.extend(glob(os.path.join(fl, pattern)))
+
+        if len(flist) > 0:
+            for file in flist:
+                fn = file
+                folder = os.path.split(fn)[0]
+
+                datedt = datetime.strptime(os.path.split(fn)[1][3:9], '%y%m%d')
+                dateday = datedt.strftime('%j')
+
+                if tlim is None:
+                    if (int(dateday) + 1) > 365:
+                        year1 = int(datedt.year) + 1
+                        day1 = 1
+                    else:
+                        year1 = int(datedt.year)
+                        day1 = int(dateday) + 1
+                    tlim = [datetime.strptime("{} {}".format(str(datedt.year), str(dateday)), "%Y %j"),
+                            datetime.strptime("{} {}".format(str(year1), str(day1)), "%Y %j")]
+                else:
+                    tlim = parser.parse(tlim)
+
+                if ofn is None:
+                    ofn = folder
+                if os.path.isdir(ofn):
+                    ofn = os.path.join(ofn,
+                                       'conv_' + tlim[0].strftime('%m%dT%H%M') + '-' + tlim[1].strftime(
+                                           '%m%dT%H%M') + '.h5')
+
+                if os.path.isfile(ofn):
+                    if not os.path.splitext(ofn)[1] in ['.h5', '.hdf5']:
+                        ofn = os.path.splitext(ofn)[0] + '.h5'
+
+                if not os.path.exists(folder):
+                    subprocess.call('mkdir -p {}'.format(folder + '/'), shell=True, timeout=5)
+
+                if os.path.exists(ofn) and not force:
+                    print('File already exists')
+                else:
+                    print('Loading and rearranging data ...')
+                    D = gpstec.returnGlobalTEC(datafolder=fn, timelim=tlim)
+                    print('Saving data to ... {}'.format(ofn))
+                    gpstec.save2HDF(D['time'], D['xgrid'], D['ygrid'], D['tecim'], ofn)
+
+                tlim = None
+                ofn = None
 
 
 if __name__ == '__main__':
