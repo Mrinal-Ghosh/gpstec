@@ -129,7 +129,7 @@ if __name__ == '__main__':
     
     p = ArgumentParser()
     
-    p.add_argument('root', type=str, help='local address')  # expected file
+    p.add_argument('root', type=str, help='local address')  # file or folder
     p.add_argument('-d', '--date', type=str, help='date in YYYY-mm-dd format')
     p.add_argument('-o', '--ofn', help='Destination folder, if None-> the same as input folder', default=None)
     p.add_argument('--tlim', help='set time limits for the file to convert', nargs=2)
