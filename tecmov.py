@@ -10,6 +10,7 @@ from argparse import ArgumentParser
 from datetime import datetime
 import os
 from glob import glob
+from sys import platform
 
 months = {1: 'jan', 2: 'feb', 3: 'mar', 4: 'apr', 5: 'may', 6: 'jun',
           7: 'jul', 8: 'aug', 9: 'sep', 10: 'oct', 11: 'nov', 12: 'dec'}
@@ -21,6 +22,7 @@ projections = {'plate': [ccrs.PlateCarree(), 'Plate Carree'],
                'geostat': [ccrs.Geostationary(), 'Geostationary']}
 
 cmaps = plt.colormaps()
+
 
 def save(root: str = None,
          slide: str = None,
@@ -104,7 +106,12 @@ def save(root: str = None,
             cb = fig.colorbar(imcm, shrink=0.5)
             cb.set_label('Total Electron Content [TECu]')
         print('Saving slide {}'.format(slide))
-        os.mkdir(os.path.split(root)[0] + '\\{}{}'.format(months[time.month], time.day))
+
+        if platform is 'win32':
+            os.mkdir(os.path.split(root)[0] + '\\{}{}'.format(months[time.month], time.day))
+        elif platform in ['linux', 'linux2']:
+            os.mkdir(os.path.split(root)[0] + '/{}{}'.format(months[time.month], time.day))
+
         folder = os.path.join(os.path.split(root)[0], '{}{}'.format(months[time.month], time.day))
         print(folder)
 
@@ -117,7 +124,10 @@ def save(root: str = None,
         plt.close(figsav)
     else:
         t0 = datetime.fromtimestamp(t[0])
-        os.mkdir(os.path.split(root)[0] + '\\{}{}'.format(months[t0.month], t0.day))
+        if platform is 'win32':
+            os.mkdir(os.path.split(root)[0] + '\\{}{}'.format(months[t0.month], t0.day))
+        elif platform in ['linux', 'linux2']:
+            os.mkdir(os.path.split(root)[0] + '/{}{}'.format(months[t0.month], t0.day))
         folder = os.path.join(os.path.split(root)[0], '{}{}'.format(months[t0.month], t0.day))
 
         if proj == 'polar':
