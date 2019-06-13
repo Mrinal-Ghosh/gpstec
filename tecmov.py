@@ -247,7 +247,11 @@ if __name__ == '__main__':
         save(root=P.root, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap)
 
     else:
-        flist = sorted(glob(os.path.split(root)[0] + '\\conv*.h5'))
+        if platform is 'win32':
+            flist = sorted(glob(os.path.split(root)[0] + '\\conv*.h5'))
+        elif platform in ['linux', 'linux2']:
+            flist = sorted(glob(os.path.split(root)[0] + '/conv*.h5'))
+
         if len(flist) > 0:
             for file in flist:
                 save(file, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap)
