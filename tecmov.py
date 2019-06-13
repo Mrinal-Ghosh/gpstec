@@ -25,6 +25,8 @@ cmaps = plt.colormaps()
 
 
 def save(root: str = None,
+         n: int = None,
+         overlap: bool = False,
          slide: str = None,
          proj: str = None,
          lim: float = None,
@@ -40,7 +42,8 @@ def save(root: str = None,
 
     if slide is not None:
         slide = int(slide)
-        im = f['GPSTEC']['im'][0:][0:][slide]
+        if slide+n-1 <= len(t):
+            im = np.nanmean(f['GPSTEC']['im'][0:][0:][slide:slide+n+1], axis=0)
         im = np.transpose(im)
         time = datetime.fromtimestamp(t[slide])
 
@@ -107,7 +110,7 @@ def save(root: str = None,
             cb.set_label('Total Electron Content [TECu]')
         print('Saving slide {}'.format(slide))
 
-        if platform is 'win32':
+        if platform == 'win32':
             os.mkdir(os.path.split(root)[0] + '\\{}{}'.format(months[time.month], time.day))
         elif platform in ['linux', 'linux2']:
             os.mkdir(os.path.split(root)[0] + '/{}{}'.format(months[time.month], time.day))
@@ -124,7 +127,8 @@ def save(root: str = None,
         plt.close(figsav)
     else:
         t0 = datetime.fromtimestamp(t[0])
-        if platform is 'win32':
+
+        if platform == 'win32':
             os.mkdir(os.path.split(root)[0] + '\\{}{}'.format(months[t0.month], t0.day))
         elif platform in ['linux', 'linux2']:
             os.mkdir(os.path.split(root)[0] + '/{}{}'.format(months[t0.month], t0.day))
@@ -137,7 +141,12 @@ def save(root: str = None,
             verts = np.vstack([np.sin(theta), np.cos(theta)]).T
             circle = mpath.Path(verts * radius + center)
 
-            for slide in list(range(len(t))):
+            if not overlap:
+                slides = list(map(lambda x: x*n, list(range(int(len(t)/n)-1))))
+            else:
+                slides = list(range(len(t)-n+1))
+
+            for slide in slides:
                 time = datetime.fromtimestamp(t[slide])
                 if lim is not 0:
                     cmax = lim
@@ -147,7 +156,7 @@ def save(root: str = None,
                     cmin = np.min(list(filter(lambda x: ~np.isnan(x), np.reshape(im, 64800))))
 
                 fig = plt.figure()
-                im = f['GPSTEC']['im'][0:][0:][slide]
+                im = np.nanmean(f['GPSTEC']['im'][0:][0:][slide:slide+n+1], axis=0)
                 im = np.transpose(im)
 
                 ax1 = plt.subplot(1, 2, 1, projection=ccrs.SouthPolarStereo())
@@ -193,9 +202,14 @@ def save(root: str = None,
 
             print(folder)
         else:
-            for slide in list(range(len(t))):
+            if not overlap:
+                slides = list(map(lambda x: x*n, list(range(int(len(t)/n)-1))))
+            else:
+                slides = list(range(len(t)-n+1))
+
+            for slide in slides:
                 fig = plt.figure()
-                im = f['GPSTEC']['im'][0:][0:][slide]
+                im = np.nanmean(f['GPSTEC']['im'][0:][0:][slide:slide+n+1], axis=0)
                 im = np.transpose(im)
                 if lim is not 0:
                     cmax = lim
@@ -233,6 +247,8 @@ def save(root: str = None,
 if __name__ == '__main__':
     p = ArgumentParser()
     p.add_argument('root', type=str, help='local address')
+    p.add_argument('-n', '--naverage', type=int, help='number of slides to include in average', default=1)
+    p.add_argument('--overlap', help='allow overlap of slides', action='store_true')
     p.add_argument('-s', '--slide', type=str, help='slide number [0,239]')
     # p.add_argument('-o', '--odir', type=str, help='directory to save images')
     p.add_argument('-p', '--proj', type=str, help='map projection - plate or polar', default='polar')
@@ -244,15 +260,15 @@ if __name__ == '__main__':
     root = P.root
 
     if os.path.splitext(root)[1] in ['.h5', '.hdf5']:
-        save(root=P.root, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap)
+        save(root=P.root, n=P.naverage, overlap=P.overlap, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap)
 
     else:
-        if platform is 'win32':
+        if platform == 'win32':
             flist = sorted(glob(os.path.split(root)[0] + '\\conv*.h5'))
         elif platform in ['linux', 'linux2']:
             flist = sorted(glob(os.path.split(root)[0] + '/conv*.h5'))
 
         if len(flist) > 0:
             for file in flist:
-                save(file, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap)
+                save(file, n=P.naverage, overlap=P.overlap, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap)
 
