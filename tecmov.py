@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 
+# Cartopy implementation of TEC plotting in polar coordinates with multiprocessing
+# author: @mrinalghosh
+
+import time
+import multiprocessing
 import matplotlib.pyplot as plt
-import matplotlib.path as mpath
+import cartomap as cm
 import numpy as np
-import cartopy.feature as cfeature
 import cartopy.crs as ccrs
+from itertools import repeat
 import h5py
 from argparse import ArgumentParser
 from datetime import datetime
@@ -17,11 +22,18 @@ months = {1: 'jan', 2: 'feb', 3: 'mar', 4: 'apr', 5: 'may', 6: 'jun',
 
 projections = {'plate': [ccrs.PlateCarree(), 'Plate Carree'],
                'near': [ccrs.NearsidePerspective(), 'Nearside Perspective'],
-               'polar': [ccrs.NorthPolarStereo(), 'Polar Stereo'],
+               'northpole': [ccrs.NorthPolarStereo(), 'North Polar Stereo'],
+               'southpole': [ccrs.SouthPolarStereo(), 'South Polar Stereo'],
                'mercator': [ccrs.Mercator(), 'Mercator'],
                'geostat': [ccrs.Geostationary(), 'Geostationary']}
 
 cmaps = plt.colormaps()
+
+
+def poolsave(flist, n, overlap, slide, proj, lim, cmap, tim):
+    with multiprocessing.Pool() as pool:
+        pool.starmap(save, list(zip(flist, repeat(n), repeat(overlap), repeat(slide), repeat(proj),
+                                    repeat(lim), repeat(cmap), repeat(tim))))
 
 
 def save(root: str = None,
@@ -30,116 +42,72 @@ def save(root: str = None,
          slide: str = None,
          proj: str = None,
          lim: float = None,
-         cmap: str = None):
-
-    f = h5py.File(root, 'r')
-    lat = f['GPSTEC']['lat']
-    lon = f['GPSTEC']['lon']
-    t = f['GPSTEC']['time']
+         cmap: str = None,
+         tim: int = None):
 
     if cmap not in cmaps:
         cmap = 'gist_ncar'
 
-    if slide is not None:
-        slide = int(slide)
-        if slide+n-1 <= len(t):
-            im = np.nanmean(f['GPSTEC']['im'][0:][0:][slide:slide+n+1], axis=0)
-        im = np.transpose(im)
-        time = datetime.fromtimestamp(t[slide])
+    with h5py.File(root, 'r') as f:
+        lat = f['GPSTEC']['lat']
+        lon = f['GPSTEC']['lon']
+        t = f['GPSTEC']['time']
 
-        # scale cmap
-        cmax = np.max(list(filter(lambda x: ~np.isnan(x), np.reshape(im, 64800))))
-        cmin = np.min(list(filter(lambda x: ~np.isnan(x), np.reshape(im, 64800))))
-        minoff = 0  # offset
-        maxoff = 0
+        if slide is not None:
+            slide = int(slide)
+            if slide+n-1 <= len(t):
+                im = np.nanmean(f['GPSTEC']['im'][0:][0:][slide:slide+n+1], axis=0)
+            im = np.transpose(im)
+            time = datetime.fromtimestamp(t[slide])
 
-        if proj == 'polar':
+            # scale cmap
+            cmax = np.max(list(filter(lambda x: ~np.isnan(x), np.reshape(im, 64800))))
+            cmin = np.min(list(filter(lambda x: ~np.isnan(x), np.reshape(im, 64800))))
+            minoff = 0  # offset
+            maxoff = 0
+
             fig = plt.figure()
+            ax1 = fig.add_subplot(121, projection=ccrs.NorthPolarStereo())
+            cm.plotCartoMap(projection='northpole', terrain=True, apex=True, igrf=True, mlon_cs='mlt', latlim=[30, 90],
+                            lonlim=[-180, 180], ax=ax1, mlat_levels=[0, 20, 40, 60, 80], mlat_labels=False)
+            ax2 = fig.add_subplot(122, projection=ccrs.SouthPolarStereo())
+            cm.plotCartoMap(projection='southpole', terrain=True, apex=True, igrf=True, mlon_cs='mlt',
+                            latlim=[-90, -30], lonlim=[-180, 180], ax=ax2, mlat_levels=[0, -20, -40, -60, -80],
+                            mlat_labels=False)
 
-            theta = np.linspace(0, 2 * np.pi, 100)
-            center, radius = [0.5, 0.5], 0.5
-            verts = np.vstack([np.sin(theta), np.cos(theta)]).T
-            circle = mpath.Path(verts * radius + center)
+            msh = ax1.pcolormesh(lon, lat, im, transform=ccrs.PlateCarree(), vmin=cmin + minoff, vmax=cmax - maxoff, cmap=cmap)
+            ax2.pcolormesh(lon, lat, im, transform=ccrs.PlateCarree(), vmin=cmin + minoff, vmax=cmax - maxoff, cmap=cmap)
 
-            ax1 = plt.subplot(1, 2, 1, projection=ccrs.SouthPolarStereo())
-            ax1.set_extent([-180, 180, -90, 0], ccrs.PlateCarree())
-            ax1.title.set_text('South Polar Stereographic')
-            ax1.add_feature(cfeature.OCEAN, zorder=1)
-            ax1.add_feature(cfeature.LAKES, zorder=1)
-            ax1.add_feature(cfeature.RIVERS, zorder=1)
-            ax1.add_feature(cfeature.LAND, zorder=1)
-            ax1.add_feature(cfeature.BORDERS, zorder=3)
-            ax1.add_feature(cfeature.COASTLINE, zorder=3)
-            ax1.gridlines()
-            ax1.set_boundary(circle, transform=ax1.transAxes)
+            fig.subplots_adjust(bottom=0.1, top=0.9, left=0.1, right=0.8,
+                                wspace=0.02, hspace=0.02)
 
-            im1 = ax1.pcolormesh(lon, lat, im, transform=ccrs.PlateCarree(), vmin=cmin + minoff, vmax=cmax - maxoff,
-                                 cmap=cmap, zorder=2)
+            cbar_ax = fig.add_axes([0.82, 0.1, 0.02, 0.8])
+            fig.colorbar(msh, cax=cbar_ax, label='Total Electron Concentration [TECu]')
+            print('Saving slide {}'.format(slide))
 
-            ax2 = plt.subplot(1, 2, 2, projection=ccrs.NorthPolarStereo())
-            ax2.set_extent([-180, 180, 90, 0], ccrs.PlateCarree())
-            ax2.title.set_text('North Polar Stereographic')
-            ax2.add_feature(cfeature.OCEAN, zorder=1)
-            ax2.add_feature(cfeature.LAKES, zorder=1)
-            ax2.add_feature(cfeature.RIVERS, zorder=1)
-            ax2.add_feature(cfeature.LAND, zorder=1)
-            ax2.add_feature(cfeature.BORDERS, zorder=3)
-            ax2.add_feature(cfeature.COASTLINE, zorder=3)
-            ax2.gridlines()
-            ax2.set_boundary(circle, transform=ax2.transAxes)
-            im2 = ax2.pcolormesh(lon, lat, im, transform=ccrs.PlateCarree(), vmin=cmin + minoff, vmax=cmax - maxoff,
-                                 cmap=cmap, zorder=2)
-            fig.subplots_adjust(right=0.8)
-            cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
-            fig.colorbar(im2, cax=cbar_ax, label='Total Electron Concentration [TECu]')
+            if platform == 'win32':
+                os.mkdir(os.path.split(root)[0] + '\\{}{}'.format(months[time.month], time.day))
+            elif platform in ['linux', 'linux2']:
+                os.mkdir(os.path.split(root)[0] + '/{}{}'.format(months[time.month], time.day))
 
-        elif proj is not 'polar':
-            fig = plt.figure('TEC ({})'.format(datetime.fromtimestamp(t[slide])))
-            ax = plt.subplot(1, 1, 1, projection=projections[proj][0])
-            ax.title.set_text(projections[proj][1])
-            ax.add_feature(cfeature.OCEAN, zorder=1)
-            ax.add_feature(cfeature.LAKES, zorder=1)
-            ax.add_feature(cfeature.RIVERS, zorder=1)
-            ax.add_feature(cfeature.LAND, zorder=1)
-            ax.add_feature(cfeature.BORDERS, zorder=3)
-            ax.add_feature(cfeature.COASTLINE, zorder=3)
-            ax.gridlines()
-            imcm = ax.pcolormesh(lon, lat, im, transform=ccrs.PlateCarree(), vmin=cmin + minoff, vmax=cmax - maxoff,
-                                 cmap=cmap, zorder=2)
-            cb = fig.colorbar(imcm, shrink=0.5)
-            cb.set_label('Total Electron Content [TECu]')
-        print('Saving slide {}'.format(slide))
+            folder = os.path.join(os.path.split(root)[0], '{}{}'.format(months[time.month], time.day))
+            print(folder)
 
-        if platform == 'win32':
-            os.mkdir(os.path.split(root)[0] + '\\{}{}'.format(months[time.month], time.day))
-        elif platform in ['linux', 'linux2']:
-            os.mkdir(os.path.split(root)[0] + '/{}{}'.format(months[time.month], time.day))
+            fig.suptitle('{}'.format(time))
+            fig.set_size_inches((12, 5), forward=False)
+            fig.savefig(os.path.join(folder, '{}.png'.format(str(slide).zfill(3))), dpi=200)
+            plt.close(fig)
+        else:
+            t0 = datetime.fromtimestamp(t[0])
 
-        folder = os.path.join(os.path.split(root)[0], '{}{}'.format(months[time.month], time.day))
-        print(folder)
+            if tim is not None:
+                n = int(tim/5.0)
 
-        # plt.savefig(os.path.join(folder, '{}.png'.format(slide)))
-        figsav = plt.gcf()
-        figsav.suptitle('{}'.format(time))
-        figsav.set_size_inches((10, 5), forward=False)
-        figsav.savefig(os.path.join(folder, '{}.png'.format(str(slide).zfill(3))), dpi=200)
-        plt.close(fig)
-        plt.close(figsav)
-    else:
-        t0 = datetime.fromtimestamp(t[0])
-
-        if platform == 'win32':
-            os.mkdir(os.path.split(root)[0] + '\\{}{}'.format(months[t0.month], t0.day))
-        elif platform in ['linux', 'linux2']:
-            os.mkdir(os.path.split(root)[0] + '/{}{}'.format(months[t0.month], t0.day))
-        folder = os.path.join(os.path.split(root)[0], '{}{}'.format(months[t0.month], t0.day))
-
-        if proj == 'polar':
-
-            theta = np.linspace(0, 2 * np.pi, 100)
-            center, radius = [0.5, 0.5], 0.5
-            verts = np.vstack([np.sin(theta), np.cos(theta)]).T
-            circle = mpath.Path(verts * radius + center)
+            if platform == 'win32':
+                os.mkdir(os.path.split(root)[0] + '\\{}{}'.format(months[t0.month], t0.day))
+            elif platform in ['linux', 'linux2']:
+                os.mkdir(os.path.split(root)[0] + '/{}{}'.format(months[t0.month], t0.day))
+            folder = os.path.join(os.path.split(root)[0], '{}{}'.format(months[t0.month], t0.day))
 
             if not overlap:
                 slides = list(map(lambda x: x*n, list(range(int(len(t)/n)-1))))
@@ -155,92 +123,35 @@ def save(root: str = None,
                     cmax = np.max(list(filter(lambda x: ~np.isnan(x), np.reshape(im, 64800))))
                     cmin = np.min(list(filter(lambda x: ~np.isnan(x), np.reshape(im, 64800))))
 
-                fig = plt.figure()
                 im = np.nanmean(f['GPSTEC']['im'][0:][0:][slide:slide+n+1], axis=0)
                 im = np.transpose(im)
 
-                ax1 = plt.subplot(1, 2, 1, projection=ccrs.SouthPolarStereo())
-                ax1.set_extent([-180, 180, -90, 0], ccrs.PlateCarree())
-                ax1.title.set_text('South Polar Stereographic')
-                ax1.add_feature(cfeature.OCEAN, zorder=1)
-                ax1.add_feature(cfeature.LAKES, zorder=1)
-                ax1.add_feature(cfeature.RIVERS, zorder=1)
-                ax1.add_feature(cfeature.LAND, zorder=1)
-                ax1.add_feature(cfeature.BORDERS, zorder=3)
-                ax1.add_feature(cfeature.COASTLINE, zorder=3)
-                ax1.gridlines()
-                ax1.set_boundary(circle, transform=ax1.transAxes)
-
-                ax1.pcolormesh(lon, lat, im, transform=ccrs.PlateCarree(), vmin=cmin, vmax=cmax,
-                               cmap=cmap, zorder=2)
-
-                ax2 = plt.subplot(1, 2, 2, projection=ccrs.NorthPolarStereo())
-                ax2.set_extent([-180, 180, 90, 0], ccrs.PlateCarree())
-                ax2.title.set_text('North Polar Stereographic')
-                ax2.add_feature(cfeature.OCEAN, zorder=1)
-                ax2.add_feature(cfeature.LAKES, zorder=1)
-                ax2.add_feature(cfeature.RIVERS, zorder=1)
-                ax2.add_feature(cfeature.LAND, zorder=1)
-                ax2.add_feature(cfeature.BORDERS, zorder=3)
-                ax2.add_feature(cfeature.COASTLINE, zorder=3)
-                ax2.gridlines()
-                ax2.set_boundary(circle, transform=ax2.transAxes)
-                imcm = ax2.pcolormesh(lon, lat, im, transform=ccrs.PlateCarree(), vmin=cmin, vmax=cmax,
-                                     cmap=cmap, zorder=2)
-
-                fig.subplots_adjust(right=0.8)
-                cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
-                fig.colorbar(imcm, cax=cbar_ax, label='Total Electron Concentration [TECu]')
-
-                print('Saving slide {}/{}...'.format(slide+1, len(t)))
-                figsav = plt.gcf()
-                figsav.suptitle('{}'.format(time))
-                figsav.set_size_inches((10, 5), forward=False)
-                figsav.savefig(os.path.join(folder, '{}.png'.format(str(slide).zfill(3))), dpi=200)
-                plt.close(fig)
-                plt.close(figsav)
-
-            print(folder)
-        else:
-            if not overlap:
-                slides = list(map(lambda x: x*n, list(range(int(len(t)/n)-1))))
-            else:
-                slides = list(range(len(t)-n+1))
-
-            for slide in slides:
                 fig = plt.figure()
-                im = np.nanmean(f['GPSTEC']['im'][0:][0:][slide:slide+n+1], axis=0)
-                im = np.transpose(im)
-                if lim is not 0:
-                    cmax = lim
-                    cmin = 0.0
-                else:
-                    cmax = np.max(list(filter(lambda x: ~np.isnan(x), np.reshape(im, 64800))))
-                    cmin = np.min(list(filter(lambda x: ~np.isnan(x), np.reshape(im, 64800))))
+                ax1 = fig.add_subplot(121, projection=ccrs.NorthPolarStereo())
+                cm.plotCartoMap(projection='northpole', terrain=True, apex=True, igrf=True, mlon_cs='mlt',
+                                latlim=[30, 90],
+                                lonlim=[-180, 180], ax=ax1, mlat_levels=[0, 20, 40, 60, 80], mlat_labels=False)
+                ax2 = fig.add_subplot(122, projection=ccrs.SouthPolarStereo())
+                cm.plotCartoMap(projection='southpole', terrain=True, apex=True, igrf=True, mlon_cs='mlt',
+                                latlim=[-90, -30], lonlim=[-180, 180], ax=ax2, mlat_levels=[0, -20, -40, -60, -80],
+                                mlat_labels=False)
 
-                ax = plt.subplot(1, 1, 1, projection=projections[proj][0])
-                ax.title.set_text(projections[proj][1])
-                ax.add_feature(cfeature.OCEAN, zorder=1)
-                ax.add_feature(cfeature.LAKES, zorder=1)
-                ax.add_feature(cfeature.RIVERS, zorder=1)
-                ax.add_feature(cfeature.LAND, zorder=1)
-                ax.add_feature(cfeature.BORDERS, zorder=3)
-                ax.add_feature(cfeature.COASTLINE, zorder=3)
-                ax.gridlines()
-                im = ax.pcolormesh(lon, lat, im, transform=ccrs.PlateCarree(), vmin=cmin, vmax=cmax,
-                                   cmap=cmap, zorder=2)
-                cb = fig.colorbar(im, shrink=0.5)
-                cb.set_label('Total Electron Content [TECu]')
-                # fig.tight_layout()
+                msh = ax1.pcolormesh(lon, lat, im, transform=ccrs.PlateCarree(), vmin=cmin, vmax=cmax,
+                                     cmap=cmap)
+                ax2.pcolormesh(lon, lat, im, transform=ccrs.PlateCarree(), vmin=cmin, vmax=cmax,
+                               cmap=cmap)
+
+                fig.subplots_adjust(bottom=0.1, top=0.9, left=0.1, right=0.8,
+                                    wspace=0.02, hspace=0.02)
+
+                cbar_ax = fig.add_axes([0.82, 0.1, 0.02, 0.8])
+                fig.colorbar(msh, cax=cbar_ax, label='Total Electron Concentration [TECu]')
+
                 print('Saving slide {}/{}...'.format(slide+1, len(t)))
-                # plt.savefig(os.path.join(folder, '{}.png'.format(slide)))
-
-                figsav = plt.gcf()
-                figsav.set_size_inches((10, 5), forward=False)
-                figsav.savefig(os.path.join(folder, '{}.png'.format(slide)), dpi=200)
+                fig.suptitle('{}'.format(time))
+                fig.set_size_inches((12, 5), forward=False)
+                fig.savefig(os.path.join(folder, '{}.png'.format(str(slide).zfill(3))), dpi=200)
                 plt.close(fig)
-                plt.close(figsav)
-
             print(folder)
 
 
@@ -250,17 +161,19 @@ if __name__ == '__main__':
     p.add_argument('-n', '--naverage', type=int, help='number of slides to include in average', default=1)
     p.add_argument('--overlap', help='allow overlap of slides', action='store_true')
     p.add_argument('-s', '--slide', type=str, help='slide number [0,239]')
-    # p.add_argument('-o', '--odir', type=str, help='directory to save images')
-    p.add_argument('-p', '--proj', type=str, help='map projection - plate or polar', default='polar')
-    p.add_argument('-l', '--lim', type=float, help='absolute limit of colorbar - 0 for no absolute', default=70)
+    p.add_argument('-p', '--proj', type=str, help='map projection - northpole, southpole, plate etc.', default='northpole')
+    p.add_argument('-l', '--lim', type=float, help='absolute limit of colorbar - 0 for no absolute', default=70.0)
     p.add_argument('-c', '--cmap', type=str, help='colormap', default=None)
+    p.add_argument('-t', '--time', type=int, help='time interval for slides in minutes', default=None)
 
     P = p.parse_args()
 
     root = P.root
 
+    start = time.time()
+
     if os.path.splitext(root)[1] in ['.h5', '.hdf5']:
-        save(root=P.root, n=P.naverage, overlap=P.overlap, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap)
+        save(root=P.root, n=P.naverage, overlap=P.overlap, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap, tim=P.time)
 
     else:
         if platform == 'win32':
@@ -269,6 +182,7 @@ if __name__ == '__main__':
             flist = sorted(glob(os.path.split(root)[0] + '/conv*.h5'))
 
         if len(flist) > 0:
-            for file in flist:
-                save(file, n=P.naverage, overlap=P.overlap, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap)
+            if len(flist) > 0:
+                poolsave(flist, n=P.naverage, overlap=P.overlap, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap, tim=P.time)
 
+    print(f'running time is {time.time()-start}')

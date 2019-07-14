@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# create .mp4 timelapses from a folder of sorted .png files
+
 import cv2
 import os
 from argparse import ArgumentParser
