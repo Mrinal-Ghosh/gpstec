@@ -53,7 +53,7 @@ if __name__ == '__main__':
     p.add_argument('-l', '--height', type=int, help='height in pixels', default=None)
     p.add_argument('-f', '--fps', type=float, help='frames per second', default=None)
     p.add_argument('-n', '--name', type=str, help='output name with .mp4 ext', default=None)
-    p.add_argument('-g', '--gamma', type=float, default=1.75)
+    p.add_argument('-g', '--gamma', type=float, default=1.4)
 
     P = p.parse_args()
 
