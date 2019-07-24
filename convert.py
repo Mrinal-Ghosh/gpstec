@@ -14,6 +14,8 @@ from dateutil import parser
 import subprocess
 from sys import platform
 from argparse import ArgumentParser
+import multiprocessing
+from itertools import repeat
 
 months = {'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10,
           'nov': 11, 'dec': 12}
@@ -71,7 +73,7 @@ def convert(root: str = None,
 
     else:  # FOLDER
 
-        if platform is 'win32':
+        if platform in ['win32']:
             flist = sorted(glob(os.path.split(root)[0] + '\\gps*.hdf5'))
         elif platform in ['linux', 'linux2']:
             flist = []

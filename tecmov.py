@@ -182,7 +182,6 @@ if __name__ == '__main__':
             flist = sorted(glob(os.path.split(root)[0] + '/conv*.h5'))
 
         if len(flist) > 0:
-            if len(flist) > 0:
-                poolsave(flist, n=P.naverage, overlap=P.overlap, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap, tim=P.time)
+            poolsave(flist, n=P.naverage, overlap=P.overlap, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap, tim=P.time)
 
     print(f'running time is {time.time()-start}')
