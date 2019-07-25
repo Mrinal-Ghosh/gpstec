@@ -178,8 +178,12 @@ if __name__ == '__main__':
 
     else:
         flist = []
-        for filepath in Path(os.path.split(root)[0]).glob('conv*.h5'):
-            flist.append(filepath)
+        if platform in ['win32']:
+            for filepath in Path(os.path.split(root)[0]).glob('**\\conv*.h5'):
+                flist.append(filepath)
+        else:
+            for filepath in Path(os.path.split(root)[0]).glob('**/conv*.h5'):
+                flist.append(filepath)
 
         print(flist)
 
