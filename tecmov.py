@@ -16,6 +16,7 @@ from datetime import datetime
 import os
 from glob import glob
 from sys import platform
+from pathlib import Path
 
 months = {1: 'jan', 2: 'feb', 3: 'mar', 4: 'apr', 5: 'may', 6: 'jun',
           7: 'jul', 8: 'aug', 9: 'sep', 10: 'oct', 11: 'nov', 12: 'dec'}
@@ -176,10 +177,11 @@ if __name__ == '__main__':
         save(root=P.root, n=P.naverage, overlap=P.overlap, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap, tim=P.time)
 
     else:
-        if platform == 'win32':
-            flist = sorted(glob(os.path.split(root)[0] + '\\conv*.h5'))
-        elif platform in ['linux', 'linux2']:
-            flist = sorted(glob(os.path.split(root)[0] + '/conv*.h5'))
+        flist = []
+        for filepath in Path(os.path.split(root)[0]).glob('conv*.h5'):
+            flist.append(filepath)
+
+        print(flist)
 
         if len(flist) > 0:
             poolsave(flist, n=P.naverage, overlap=P.overlap, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap, tim=P.time)

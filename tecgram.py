@@ -77,7 +77,7 @@ def keogram(fn: str = None,
             y = range(-180, 179)
 
         im = np.flipud(np.transpose(im))
-        print(im.shape)
+        # print(im.shape)
         mt = mdates.date2num((t[0], t[-1]))
 
         fig = figure()
