@@ -175,7 +175,6 @@ if __name__ == '__main__':
 
     if os.path.splitext(root)[1] in ['.h5', '.hdf5']:
         save(root=P.root, n=P.naverage, overlap=P.overlap, slide=P.slide, proj=P.proj, lim=P.lim, cmap=P.cmap, tim=P.time)
-
     else:
         flist = []
         if platform in ['win32']:

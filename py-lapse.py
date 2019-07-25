@@ -7,9 +7,18 @@ import cv2
 import os
 from argparse import ArgumentParser
 import numpy as np
+import multiprocessing
+from itertools import repeat
+from sys import platform
+from pathlib import Path
 
 
-def lapse(root: str = None,
+def poollapse(flist, width, height, fps, name, gamma):
+    with multiprocessing.Pool() as pool:
+        pool.starmap(lapse, zip(flist, repeat(width), repeat(height), repeat(fps), repeat(name), repeat(gamma)))
+
+
+def lapse(file: str = None,
           width: int = None,
           height: int = None,
           fps: float = None,
@@ -17,10 +26,10 @@ def lapse(root: str = None,
           gamma: float = None):
     """convert sequential png files to mp4"""
 
-    if os.path.split(root)[1] == '':
-        folder = os.path.join(root)[0]
+    if os.path.split(file)[1] == '':
+        folder = os.path.join(file)[0]
     else:
-        folder = root
+        folder = file
 
     invgamma = 1 / gamma
     table = np.array([((i / 255.0) ** invgamma) * 255 for i in np.arange(0, 256)]).astype('uint8')
@@ -59,4 +68,19 @@ if __name__ == '__main__':
 
     P = p.parse_args()
 
-    lapse(root=P.root, width=P.width, height=P.height, fps=P.fps, name=P.name, gamma=P.gamma)
+    root = P.root
+
+    flist = []
+    if platform in ['win32']:
+        for filepath in Path(os.path.split(root)[0]).glob('**\\*.png'):
+            flist.append(filepath.parent)
+    else:
+        for filepath in Path(os.path.split(root)[0]).glob('**/*.png'):
+            flist.append(filepath.parent)
+
+    flist = set(flist)
+
+    print(flist)
+
+    if len(flist) > 0:
+        poollapse(flist, width=P.width, height=P.height, fps=P.fps, name=P.name, gamma=P.gamma)
