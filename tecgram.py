@@ -21,41 +21,16 @@ from pandas.plotting import register_matplotlib_converters
 
 register_matplotlib_converters()
 
-# def test_plot2d_datetime():
-#     t = np.arange('2010-05-04T12:05:00', '2010-05-04T12:05:01', dtype='datetime64[ms]')
-#     y = np.random.randn(t.size)
-#
-#     # t = t.astype(datetime)  # Matplotlib < 2.2
-#
-#     ax = figure().gca()
-#     ax.plot(t, y)
 
-
-# def test_plot2d_xarray():
-#     t = np.arange('2010-05-04T12:05:00', '2010-05-04T12:05:01', dtype='datetime64[ms]')
-#     y = np.random.randn(t.size)
-#
-#     dat = xarray.DataArray(y, coords={'time': t}, dims=['time'])
-#
-#     dset = xarray.Dataset({'random1Dstuff': dat})
-#
-#     fg = figure()
-#     ax = fg.subplots(3, 1, sharex=True)
-#
-#     dat.plot(ax=ax[0])
-#
-#     ax[1].plot(dat.time, dat)
-#
-#     dset['random1Dstuff'].plot(ax=ax[2])
-
-def poolkeo(flist, latline, lonline):
+def poolkeo(flist, latline, lonline, odir):
     with multiprocessing.Pool() as pool:
-        pool.starmap(keogram, zip(flist, repeat(latline), repeat(lonline)))
+        pool.starmap(keogram, zip(flist, repeat(latline), repeat(lonline), repeat(odir)))
 
 
 def keogram(fn: str = None,
             latline: int = None,
-            lonline: int = None):
+            lonline: int = None,
+            odir: str = None):
 
     # default
     def_lat = 41
@@ -90,7 +65,10 @@ def keogram(fn: str = None,
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
         fig.autofmt_xdate()
 
-        show()
+        if odir != '-':
+            fig.savefig(os.path.join(odir, '{}.png'.format(mt[0])), dpi=200)
+        else:
+            show()
 
 
 if __name__ == '__main__':
@@ -98,6 +76,7 @@ if __name__ == '__main__':
     p.add_argument('root', type=str,  help='local folder or file')
     p.add_argument('-t', '--latline', type=int, help='latitude value [-90,89]')
     p.add_argument('-n', '--lonline', type=int, help='longitude value [-180,179]')
+    p.add_argument('-o', '--odir', type=str, help='save images to directory', default='-')
 
     P = p.parse_args()
     root = P.root
@@ -118,4 +97,4 @@ if __name__ == '__main__':
 
     if len(flist) > 0:
         # print(flist)
-        poolkeo(flist, latline=P.latline, lonline=P.lonline)
+        poolkeo(flist, latline=P.latline, lonline=P.lonline, odir=P.odir)
