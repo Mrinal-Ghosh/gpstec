@@ -22,6 +22,7 @@ from apexpy import Apex
 
 register_matplotlib_converters()
 
+# use the plotKeogram function of CartoMap instead
 
 def poolkeo(flist, latline, lonline, odir, apex, geo):
     with multiprocessing.Pool() as pool:
