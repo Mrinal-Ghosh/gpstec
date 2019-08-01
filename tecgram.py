@@ -34,6 +34,7 @@ def keogram(fn=None, latline=None, lonline=None, odir=None, apex=True):
     mlat_levels = list(range(-90, 90, 10))
     glon_levels = list(range(-180, 180, 20))
     glat_levels = list(range(-90, 90, 10))
+    height=350
 
     with h5py.File(fn, 'r') as f:
         lat = f['GPSTEC']['lat']
@@ -64,18 +65,18 @@ def keogram(fn=None, latline=None, lonline=None, odir=None, apex=True):
         if latline is None:
             if apex is True:
                 for level in mlat_levels:  # apex
-                    glat, _ = A.convert(level, lonline, 'geo', 'apex')
+                    glat, _ = A.convert(level, lonline, 'geo', 'apex', height=height)
                     ax.axhline(glat, linestyle='--', linewidth=1, color='firebrick')
-                    print(f'{level} in geo is {glat} in apex')
+                    # print(f'{level} in geo is {glat} in apex')
             else:
                 for level in glat_levels:  # geo
                     ax.axhline(level, linestyle='--', linewidth=1, color='cornflowerblue')
         elif lonline is None:
             if apex is True:
                 for level in mlon_levels:  # apex
-                    _, glon = A.convert(latline, level, 'geo', 'apex')
+                    _, glon = A.convert(latline, level, 'geo', 'apex', height=height)
                     ax.axhline(glon, linestyle='--', linewidth=1, color='firebrick')
-                    print(f'{level} in geo is {glon} in apex')
+                    # print(f'{level} in geo is {glon} in apex')
             else:
                 for level in glon_levels:  # geo
                     ax.axhline(level, linestyle='--', linewidth=1, color='cornflowerblue')
