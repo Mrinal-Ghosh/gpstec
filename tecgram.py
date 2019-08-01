@@ -23,12 +23,12 @@ from apexpy import Apex
 register_matplotlib_converters()
 
 
-def poolkeo(flist, latline, lonline, odir, apex):
+def poolkeo(flist, latline, lonline, odir, apex, geo):
     with multiprocessing.Pool() as pool:
-        pool.starmap(keogram, zip(flist, repeat(latline), repeat(lonline), repeat(odir), repeat(apex)))
+        pool.starmap(keogram, zip(flist, repeat(latline), repeat(lonline), repeat(odir), repeat(apex), repeat(geo)))
 
 
-def keogram(fn=None, latline=None, lonline=None, odir=None, apex=True):
+def keogram(fn=None, latline=None, lonline=None, odir=None, apex=False, geo=False):
 
     mlon_levels = list(range(-180, 180, 20))
     mlat_levels = list(range(-90, 90, 10))
@@ -64,21 +64,21 @@ def keogram(fn=None, latline=None, lonline=None, odir=None, apex=True):
 
         if latline is None:
             if apex is True:
-                for level in mlat_levels:  # apex
+                for level in mlat_levels:
                     glat, _ = A.convert(level, lonline, 'geo', 'apex', height=height)
                     ax.axhline(glat, linestyle='--', linewidth=1, color='firebrick')
                     # print(f'{level} in geo is {glat} in apex')
-            else:
-                for level in glat_levels:  # geo
+            if geo is True:
+                for level in glat_levels:
                     ax.axhline(level, linestyle='--', linewidth=1, color='cornflowerblue')
         elif lonline is None:
             if apex is True:
-                for level in mlon_levels:  # apex
+                for level in mlon_levels:
                     _, glon = A.convert(latline, level, 'geo', 'apex', height=height)
                     ax.axhline(glon, linestyle='--', linewidth=1, color='firebrick')
                     # print(f'{level} in geo is {glon} in apex')
-            else:
-                for level in glon_levels:  # geo
+            if geo is True:
+                for level in glon_levels:
                     ax.axhline(level, linestyle='--', linewidth=1, color='cornflowerblue')
 
         ax.xaxis_date()
@@ -98,12 +98,13 @@ if __name__ == '__main__':
     p.add_argument('-n', '--lonline', type=int, help='longitude value [-180,179]')
     p.add_argument('-o', '--odir', type=str, help='save images to directory', default='-')
     p.add_argument('--apex', help='apex coordinates', action='store_true')
+    p.add_argument('--geo', help='geo coordinates', action='store_true')
 
     P = p.parse_args()
     root = P.root
 
     if os.path.splitext(root)[1] in ['.h5', '.hdf5']:
-        keogram(root, P.latline, P.lonline, P.odir, P.apex)
+        keogram(root, P.latline, P.lonline, P.odir, P.apex, P.geo)
     else:
         if platform == 'win32':
             if len(os.path.split(root)[1]) == 0:  # cases for trailing backslash
@@ -118,4 +119,4 @@ if __name__ == '__main__':
 
         if len(flist) > 0:
             # print(flist)
-            poolkeo(flist, latline=P.latline, lonline=P.lonline, odir=P.odir, apex=P.apex)
+            poolkeo(flist, latline=P.latline, lonline=P.lonline, odir=P.odir, apex=P.apex, geo=P.geo)
