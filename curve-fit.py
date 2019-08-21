@@ -1,5 +1,5 @@
 """
-fits curve of sliced magnetic lat data to quantize MLT
+normally fits curve of sliced magnetic lat data to quantize MLT
 """
 
 import cartomap as cm
@@ -15,6 +15,9 @@ def norm_fit(x, mu, sigma, a, b):
 
 
 def sin_fit(x, a, b, c):
+    """
+    does not create stable graphs
+    """
     return a * np.sin(b * x) + c
 
 
@@ -26,7 +29,7 @@ if __name__ == '__main__':
         t = f['GPSTEC']['time']
         im = f['GPSTEC']['im']
 
-        _, _, x_ax, sl = cm.plotSlice(im=im, t=t, time=30, latline=50, magnetic=True, conjugate=True, average=True)
+        _, _, x_ax, sl = cm.plotSlice(im=im, t=t, time=0, latline=0, magnetic=True, conjugate=True, average=True)
         par, par_cov = optimize.curve_fit(norm_fit, x_ax, sl)
         plt.plot(x_ax, norm_fit(x_ax, *par))
         # plt.legend(title='Best fit line')
