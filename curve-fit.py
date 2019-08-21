@@ -24,15 +24,28 @@ def sin_fit(x, a, b, c):
 if __name__ == '__main__':
     fn = 'C:\\Users\\mrina\\Desktop\\data\\conv_0428T0000-0429T0000.h5'
     with h5py.File(fn, 'r') as f:
-        lat = f['GPSTEC']['lat']
-        lon = f['GPSTEC']['lon']
+        # lat = f['GPSTEC']['lat']
+        # lon = f['GPSTEC']['lon']
         t = f['GPSTEC']['time']
         im = f['GPSTEC']['im']
 
-        _, _, x_ax, sl = cm.plotSlice(im=im, t=t, time=0, latline=0, magnetic=True, conjugate=True, average=True)
+        # latitudes = list(range(-90,90))
+        # for lat in latitudes:
+        #     try:
+        #         _, _, x_ax, sl = cm.plotSlice(im=im, t=t, time=0, latline=lat,
+        #                                       magnetic=True, conjugate=True, average=True)
+        #         par, par_cov = optimize.curve_fit(norm_fit, x_ax, sl)
+        #         # plt.plot(x_ax, norm_fit(x_ax, *par))
+        #         plt.close()
+        #         # plt.show()
+        #         print('At {0:d}, mean is {1:.2f}, s.d. is {2:.2f}'.format(lat, par[0], par[1]))
+        #     except:
+        #         print('Not enough data points to optimize')
+
+        lat = 30
+        _, _, x_ax, sl = cm.plotSlice(im=im, t=t, time=0, latline=lat, magnetic=True, conjugate=False, average=True)
         par, par_cov = optimize.curve_fit(norm_fit, x_ax, sl)
         plt.plot(x_ax, norm_fit(x_ax, *par))
-        # plt.legend(title='Best fit line')
+        # plt.close()
         plt.show()
-        print('Mean is {0:.2f}, s.d. is {1:.2f}'.format(par[0], par[1]))
-
+        print('At latitude {0:d}, mean is longitude {1:.2f}, s.d. is {2:.2f}'.format(lat, par[0], par[1]))
