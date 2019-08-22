@@ -43,6 +43,9 @@ if __name__ == '__main__':
         #         print('Not enough data points to optimize')
 
         lat = 30
+        """
+        conjugate doesn't do anything with magnetic latitude
+        """
         _, _, x_ax, sl = cm.plotSlice(im=im, t=t, time=0, latline=lat, magnetic=True, conjugate=False, average=True)
         par, par_cov = optimize.curve_fit(norm_fit, x_ax, sl)
         plt.plot(x_ax, norm_fit(x_ax, *par))
